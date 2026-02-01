@@ -45,3 +45,15 @@ CREATE TABLE IF NOT EXISTS lessons (
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_courses_user_id ON courses(user_id);
 CREATE INDEX IF NOT EXISTS idx_lessons_course_id ON lessons(course_id);
+
+-- Usage Logs table
+CREATE TABLE IF NOT EXISTS usage_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  course_id UUID REFERENCES courses(id) ON DELETE SET NULL,
+  tokens INTEGER NOT NULL,
+  model VARCHAR(50) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_usage_logs_user_id ON usage_logs(user_id);

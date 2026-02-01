@@ -6,18 +6,23 @@ export const useCourseLogic = () => {
   const [generatingCourse, setGeneratingCourse] = useState(false);
   const [generationLogs, setGenerationLogs] = useState<string[]>([]);
   const [generationProgress, setGenerationProgress] = useState(0);
+  const [tokenUsage, setTokenUsage] = useState<{ totalTokens: number; model: string } | null>(null);
   const { toast } = useToast();
 
   const generateCourse = async (topic: string, courseId: string) => {
     setGeneratingCourse(true);
     setGenerationLogs([]);
     setGenerationProgress(0);
+    setTokenUsage(null);
 
     return new Promise((resolve, reject) => {
       api.postStream('/courses/generate', { topic, courseId }, (event, data) => {
         if (event === 'progress') {
           setGenerationProgress(data.percent);
           setGenerationLogs(prev => [...prev, data.message]);
+        } else if (event === 'usage') {
+          console.log("🎟️ Token Usage Event Received:", data);
+          setTokenUsage(data);
         } else if (event === 'complete') {
           // Delay briefly to show 100%
           setTimeout(() => {
@@ -54,6 +59,7 @@ export const useCourseLogic = () => {
     generatingCourse,
     generateCourse,
     generationLogs,
-    generationProgress
+    generationProgress,
+    tokenUsage
   };
 };

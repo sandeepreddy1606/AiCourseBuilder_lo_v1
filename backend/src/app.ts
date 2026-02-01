@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import authRoutes from './routes/authRoutes';
 import courseRoutes from './routes/courseRoutes';
 import lessonRoutes from './routes/lessonRoutes';
+import usageRoutes from './routes/usageRoutes';
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.use(morgan('dev'));
 app.use('/auth', authRoutes);
 app.use('/courses', courseRoutes);
 app.use('/lessons', lessonRoutes);
+app.use('/usage', usageRoutes);
 
 app.get('/', (req, res) => {
     res.send('API is running');

@@ -9,25 +9,6 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 // Helper to sanitize JSON
 const cleanJson = (text: string) => text.replace(/```json/g, '').replace(/```/g, '').trim();
 
-// 1. Determine Course Structure
-async function determineStructure(topic: string, model: any) {
-    const prompt = `
-    Analyze the topic: "${topic}".
-    Is this a "Small Topic" (can be explained in 1 video) or a "Big Topic" (needs a roadmap of 3-5 sub-modules)?
-    
-    Return JSON:
-    {
-        "type": "small" | "big",
-        "lessons": [ "Lesson Title 1" ] // If small, just 1 title. If big, 3-5 lesson titles.
-    }
-    `;
-    const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: "application/json" }
-    });
-    const text = cleanJson(result.response.text());
-    return JSON.parse(text);
-}
 
 // 2. Process Single Lesson (Video -> Transcript -> Content)
 async function processLesson(topic: string, lessonTitle: string, model: any) {
@@ -44,7 +25,8 @@ async function processLesson(topic: string, lessonTitle: string, model: any) {
             content: `Overview of ${lessonTitle}`,
             videos: [],
             notes: "No video found. AI generated summary...",
-            quiz_data: null
+            quiz_data: null,
+            tokens: 0
         };
     }
 
@@ -109,12 +91,15 @@ async function processLesson(topic: string, lessonTitle: string, model: any) {
         };
     }
 
+    const tokens = result.response.usageMetadata?.totalTokenCount || 0;
+
     return {
         title: lessonTitle,
         content: generatedContent.content || "No content generated",
         videos: [videoData],
         notes: generatedContent.notes || "No notes generated",
-        quiz_data: generatedContent.quiz_data || { questions: [] }
+        quiz_data: generatedContent.quiz_data || { questions: [] },
+        tokens
     };
 }
 
@@ -137,20 +122,41 @@ export const generateCourse = async (req: Request & { user?: any }, res: Respons
             return;
         }
 
-        // Fix: Use correct model version
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        // Revert to 1.5-flash for better rate limits (1500 RPD vs 20 RPD for 2.5-flash)
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        let totalTokens = 0;
 
         sendEvent('progress', { percent: 10, message: `Analyzing topic: "${topic}"...` });
 
         // Step 1: Determine Structure
         let structure;
         try {
-            structure = await determineStructure(topic, model);
+            const prompt = `
+            Analyze the topic: "${topic}".
+            Is this a "Small Topic" (can be explained in 1 video) or a "Big Topic" (needs a roadmap of 3-5 sub-modules)?
+            
+            Return JSON:
+            {
+                "type": "small" | "big",
+                "lessons": [ "Lesson Title 1" ] // If small, just 1 title. If big, 3-5 lesson titles.
+            }
+            `;
+            const result = await model.generateContent({
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: { responseMimeType: "application/json" }
+            });
+            const text = cleanJson(result.response.text());
+            structure = JSON.parse(text);
+
+            if (result.response.usageMetadata) {
+                totalTokens += result.response.usageMetadata.totalTokenCount || 0;
+            }
+
             console.log("Structure:", structure);
             sendEvent('progress', { percent: 20, message: `Determined structure: ${structure.type} course with ${structure.lessons.length} lessons.` });
         } catch (err: any) {
             console.error("Structure error:", err);
-            // Fallback to basic structure
             structure = { type: 'small', lessons: [`Introduction to ${topic}`] };
             sendEvent('progress', { percent: 20, message: "Standard structure determined." });
         }
@@ -171,6 +177,10 @@ export const generateCourse = async (req: Request & { user?: any }, res: Respons
             // Add detailed logs for substeps if possible, but for now just lesson level
             const lessonData = await processLesson(topic, lessonTitle, model);
 
+            // Accumulate tokens
+            // @ts-ignore
+            if (lessonData.tokens) totalTokens += lessonData.tokens;
+
             const { rows } = await pool.query(
                 'INSERT INTO lessons (course_id, title, content, order_index, videos, quiz_data, notes) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
                 [
@@ -187,6 +197,10 @@ export const generateCourse = async (req: Request & { user?: any }, res: Respons
         }
 
         sendEvent('progress', { percent: 100, message: "Finalizing course..." });
+
+        // Send Usage Stats
+        sendEvent('usage', { totalTokens, model: "gemini-1.5-flash" });
+
         sendEvent('complete', { success: true, lessons: savedLessons });
         res.end();
 

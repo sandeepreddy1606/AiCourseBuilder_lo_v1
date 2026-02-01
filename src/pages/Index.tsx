@@ -12,8 +12,17 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 import { Lesson, Course } from '@/types/course';
 import { Button } from '@/components/ui/button';
 import { LogOut, ArrowLeft, BarChart3 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 import { GenerationOverlay } from '@/components/course/GenerationOverlay';
+import { TokenTracker } from '@/components/course/TokenTracker';
 
 const Index = () => {
   const [user, setUser] = useState<any | null>(null);
@@ -39,11 +48,24 @@ const Index = () => {
     generatingCourse,
     generateCourse,
     generationLogs,
-    generationProgress
+    generationProgress,
+    tokenUsage
   } = useCourseLogic();
 
   const { lessonsMap } = useAllLessons(courses.map(c => c.id));
   const analytics = useAnalytics(courses, lessonsMap);
+
+  // State for token Usage Modal
+  const [showTokenModal, setShowTokenModal] = useState(false);
+  const [refreshTokenTracker, setRefreshTokenTracker] = useState(0);
+
+  // Show modal when tokenUsage arrives
+  useEffect(() => {
+    if (tokenUsage) {
+      setShowTokenModal(true);
+      setRefreshTokenTracker(prev => prev + 1);
+    }
+  }, [tokenUsage]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -144,12 +166,37 @@ const Index = () => {
         logs={generationLogs}
         progress={generationProgress}
       />
+
+      <Dialog open={showTokenModal} onOpenChange={setShowTokenModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Generation Complete! 🎉</DialogTitle>
+            <DialogDescription>
+              Your course has been successfully created using <strong>{tokenUsage?.model}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-2">
+            <div className="flex justify-between items-center bg-muted p-3 rounded-lg">
+              <span className="text-sm font-medium">Tokens Used</span>
+              <span className="font-mono text-lg font-bold text-primary">{tokenUsage?.totalTokens}</span>
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              This usage counts towards your AI quota.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowTokenModal(false)}>Awesome!</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <header className="border-b border-border/50 backdrop-blur-sm sticky top-0 z-10 bg-background/50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             AI Course Builder
           </h1>
           <div className="flex items-center gap-2">
+            <TokenTracker refreshTrigger={refreshTokenTracker} />
             {(currentCourse || showNewCourseForm || showAnalytics) && (
               <Button variant="outline" onClick={handleBackToCourses} size="sm">
                 <ArrowLeft className="w-4 h-4 mr-2" />
