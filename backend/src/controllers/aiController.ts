@@ -1,17 +1,35 @@
 import { Request, Response } from 'express';
 import pool from '../config/db';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleAIFileManager } from "@google/generative-ai/server";
 import YouTube from 'youtube-sr';
 import { YoutubeTranscript } from 'youtube-transcript';
 import { COURSE_DEFAULTS } from '../config/defaults';
+import ytdl from 'ytdl-core';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const fileManager = new GoogleAIFileManager(process.env.GEMINI_API_KEY || '');
 
 // Helper to sanitize JSON
 const cleanJson = (text: string) => text.replace(/```json/g, '').replace(/```/g, '').trim();
 
+// Helper: Download Audio from YouTube
+const downloadAudio = async (url: string, videoId: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const tempFilePath = path.join(os.tmpdir(), `${videoId}.mp3`);
+        const stream = ytdl(url, { quality: 'lowestaudio', filter: 'audioonly' });
 
-// 2. Process Single Lesson (Video -> Transcript -> Content)
+        stream.pipe(fs.createWriteStream(tempFilePath))
+            .on('finish', () => resolve(tempFilePath))
+            .on('error', (err) => reject(err));
+    });
+};
+
+
+// 2. Process Single Lesson (Video -> Transcript/Audio -> Content)
 async function processLesson(topic: string, lessonTitle: string, model: any) {
     console.log(`Processing lesson: ${lessonTitle}`);
 
@@ -40,59 +58,110 @@ async function processLesson(topic: string, lessonTitle: string, model: any) {
         thumbnail: video.thumbnail?.url || ''
     };
 
-    // B. Get Transcript
+    let generatedContent;
+    let tokens = 0;
+
+    // B. Get Transcript (Primary Strategy)
     let transcriptText = "";
+    let useAudioFallback = false;
+
     try {
         const transcript = await YoutubeTranscript.fetchTranscript(video.id!);
-        transcriptText = transcript.map(t => t.text).join(' ').slice(0, COURSE_DEFAULTS.TRANSCRIPT_CHAR_LIMIT); // Limit length
+        transcriptText = transcript.map(t => t.text).join(' ').slice(0, COURSE_DEFAULTS.TRANSCRIPT_CHAR_LIMIT);
+        console.log(`✅ Transcript found for ${lessonTitle}`);
     } catch (e) {
-        console.log(`No transcript for ${video.id}, using video description/title`);
-        transcriptText = `Title: ${video.title}. No transcript available.`;
+        console.log(`⚠️ No transcript for ${video.id}, switching to Audio Fallback...`);
+        useAudioFallback = true;
     }
 
-    // C. Generate Notes & Quiz
-    const contentPrompt = `
-    Based on this video transcript about "${lessonTitle}":
-    "${transcriptText}"
+    // C. Generate Content
+    if (!useAudioFallback) {
+        // STRATEGY 1: TEXT BASED
+        const contentPrompt = `
+        Based on this video transcript about "${lessonTitle}":
+        "${transcriptText}"
 
-    1. Write a short content summary (2-3 sentences).
-    2. Create detailed Notes (markdown bullet points).
-    3. Create a Quiz with ${COURSE_DEFAULTS.QUIZ_QUESTION_COUNT} questions (JSON).
+        1. Write a short content summary (2-3 sentences).
+        2. Create detailed Notes (markdown bullet points).
+        3. Create a Quiz with ${COURSE_DEFAULTS.QUIZ_QUESTION_COUNT} questions (JSON).
 
-    Output JSON:
-    {
-        "content": "...",
-        "notes": "...",
-        "quiz_data": {
-            "questions": [
+        Output JSON:
+        {
+            "content": "...",
+            "notes": "...",
+            "quiz_data": { 
+                "questions": [ { "question": "...", "options": ["a","b","c","d"], "correctAnswer": 0 } ] 
+            }
+        }
+        `;
+
+        const result = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: contentPrompt }] }],
+            generationConfig: { responseMimeType: "application/json" }
+        });
+
+        try {
+            generatedContent = JSON.parse(cleanJson(result.response.text()));
+        } catch (e) {
+            generatedContent = { content: "Failed to parse", notes: "", quiz_data: { questions: [] } };
+        }
+        tokens = result.response.usageMetadata?.totalTokenCount || 0;
+
+    } else {
+        // STRATEGY 2: AUDIO BASED
+        let audioPath = "";
+        try {
+            console.log(`⬇️ Downloading audio for ${lessonTitle}...`);
+            audioPath = await downloadAudio(video.url, video.id!);
+
+            console.log(`☁️ Uploading audio to Gemini...`);
+            const uploadResponse = await fileManager.uploadFile(audioPath, {
+                mimeType: "audio/mp3",
+                displayName: `Audio: ${lessonTitle}`,
+            });
+
+            console.log(`🧠 Analyzing audio for ${lessonTitle}...`);
+            const audioPrompt = `
+            Listen to this lecture about "${lessonTitle}".
+            
+            1. Write a short content summary (2-3 sentences).
+            2. Create detailed Notes (markdown bullet points).
+            3. Create a Quiz with ${COURSE_DEFAULTS.QUIZ_QUESTION_COUNT} questions (JSON).
+
+            Output JSON only.
+            `;
+
+            const result = await model.generateContent([
                 {
-                    "question": "...",
-                    "options": ["a", "b", "c", "d"],
-                    "correctAnswer": 0 // index
-                }
-            ]
+                    fileData: {
+                        mimeType: uploadResponse.file.mimeType,
+                        fileUri: uploadResponse.file.uri
+                    }
+                },
+                { text: audioPrompt }
+            ]);
+
+            try {
+                generatedContent = JSON.parse(cleanJson(result.response.text()));
+            } catch (e) {
+                generatedContent = { content: "Failed to parse audio response", notes: "", quiz_data: { questions: [] } };
+            }
+            tokens = result.response.usageMetadata?.totalTokenCount || 0;
+
+        } catch (audioErr) {
+            console.error(`❌ Audio fallback failed for ${lessonTitle}:`, audioErr);
+            generatedContent = {
+                content: "Could not analyze video content (No transcript & Audio failed).",
+                notes: "N/A",
+                quiz_data: { questions: [] }
+            };
+        } finally {
+            // Cleanup logic
+            if (audioPath && fs.existsSync(audioPath)) {
+                fs.unlinkSync(audioPath);
+            }
         }
     }
-    `;
-
-    const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: contentPrompt }] }],
-        generationConfig: { responseMimeType: "application/json" }
-    });
-
-    let generatedContent;
-    try {
-        generatedContent = JSON.parse(cleanJson(result.response.text()));
-    } catch (e) {
-        console.error("Failed to parse AI response used fallback:", e);
-        generatedContent = {
-            content: "Content generation failed. Please review the video.",
-            notes: "Notes unavailable.",
-            quiz_data: { questions: [] }
-        };
-    }
-
-    const tokens = result.response.usageMetadata?.totalTokenCount || 0;
 
     return {
         title: lessonTitle,
@@ -164,19 +233,29 @@ export const generateCourse = async (req: Request & { user?: any }, res: Respons
 
         const savedLessons = [];
         const lessonsToProcess = structure.lessons.slice(0, COURSE_DEFAULTS.MAX_LESSONS_PER_COURSE);
-        const totalLessons = lessonsToProcess.length;
 
-        for (let i = 0; i < lessonsToProcess.length; i++) {
-            const lessonTitle = lessonsToProcess[i];
-            const currentPercent = 20 + ((i / totalLessons) * 70); // 20% to 90%
+        sendEvent('progress', { percent: 30, message: `Starting parallel generation for ${lessonsToProcess.length} lessons...` });
 
-            sendEvent('progress', {
-                percent: Math.round(currentPercent),
-                message: `Generating Lesson ${i + 1}/${totalLessons}: "${lessonTitle}"`
-            });
+        // PARALLEL EXECUTION
+        const lessonPromises = lessonsToProcess.map(async (lessonTitle: string, index: number) => {
+            try {
+                // Process
+                const lessonData = await processLesson(topic, lessonTitle, model);
+                // Return with index to preserve order if needed (Promise.all preserves order anyway)
+                return { ...lessonData, index };
+            } catch (err) {
+                console.error(`Error in lesson ${lessonTitle}:`, err);
+                return null;
+            }
+        });
 
-            // Add detailed logs for substeps if possible, but for now just lesson level
-            const lessonData = await processLesson(topic, lessonTitle, model);
+        const results = await Promise.all(lessonPromises);
+
+        sendEvent('progress', { percent: 80, message: "Saving lessons to database..." });
+
+        for (let i = 0; i < results.length; i++) {
+            const lessonData = results[i];
+            if (!lessonData) continue;
 
             // Accumulate tokens
             // @ts-ignore
@@ -188,7 +267,7 @@ export const generateCourse = async (req: Request & { user?: any }, res: Respons
                     courseId,
                     lessonData.title,
                     lessonData.content,
-                    i,
+                    i, // Use loop index to ensure correct order_index in DB
                     JSON.stringify(lessonData.videos),
                     JSON.stringify(lessonData.quiz_data),
                     lessonData.notes
