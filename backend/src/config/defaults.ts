@@ -8,5 +8,12 @@ export const COURSE_DEFAULTS = {
     BIG_TOPIC_MAX_LESSONS: 5,
 
     // Max lessons to process in one batch (to avoid timeouts)
-    MAX_LESSONS_PER_COURSE: 5
+    MAX_LESSONS_PER_COURSE: 5,
+
+    // Server Defaults
+    DEFAULT_PORT: 5000,
+    JWT_SECRET_FALLBACK: 'default_dev_secret_change_me',
+
+    // AI Content Limits
+    TRANSCRIPT_CHAR_LIMIT: 15000
 };

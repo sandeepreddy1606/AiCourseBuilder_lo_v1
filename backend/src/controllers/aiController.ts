@@ -44,7 +44,7 @@ async function processLesson(topic: string, lessonTitle: string, model: any) {
     let transcriptText = "";
     try {
         const transcript = await YoutubeTranscript.fetchTranscript(video.id!);
-        transcriptText = transcript.map(t => t.text).join(' ').slice(0, 15000); // Limit length
+        transcriptText = transcript.map(t => t.text).join(' ').slice(0, COURSE_DEFAULTS.TRANSCRIPT_CHAR_LIMIT); // Limit length
     } catch (e) {
         console.log(`No transcript for ${video.id}, using video description/title`);
         transcriptText = `Title: ${video.title}. No transcript available.`;
