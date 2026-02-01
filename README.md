@@ -1,66 +1,108 @@
-# Welcome to Aicoursebuilder project
+# AI Course Builder
 
-## Project info
+A powerful, AI-driven application that generates personalized learning courses instantly. Built with React, Node.js, Express, and PostgreSQL, styled with Tailwind CSS.
 
-**Project Name:** Aicoursebuilder
+## 🚀 Features
 
-## How can I edit this code?
+*   **AI Course Generation**: Generates comprehensive course structures with lessons, notes, and quizzes using Google Gemini AI.
+*   **Interactive Learning**: Track progress, mark lessons as complete, and take quizzes.
+*   **Modern UI**: Beautiful, responsive interface built with Tailwind CSS and Radix UI.
+*   **Secure Authentication**: Custom JWT-based authentication system.
+*   **PostgreSQL Database**: Robust data storage using Neon (or any PostgreSQL instance).
 
-You can edit your application in a few different ways.
+## 🛠️ Tech Stack
 
-### Option 1: Use your preferred IDE
+*   **Frontend**: React, TypeScript, Vite, Tailwind CSS, shadcn/ui
+*   **Backend**: Node.js, Express, TypeScript
+*   **Database**: PostgreSQL (Neon Cloud)
+*   **AI**: Google Gemini (Generative AI)
 
-If you want to work locally, clone this repository and make your changes.
-You’ll need **Node.js** and **npm** installed – you can [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+## 📋 Prerequisites
 
-Follow these steps:
+Before you begin, ensure you have the following installed:
+*   [Node.js](https://nodejs.org/) (v16 or higher)
+*   [PostgreSQL](https://www.postgresql.org/) (or a cloud provider like [Neon](https://neon.tech))
+*   A [Google Gemini API Key](https://aistudio.google.com/app/apikey)
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## ⚙️ Installation & Setup
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### 1. Backend Setup
 
-# Step 3: Install the necessary dependencies.
-npm i
+The backend handles the API, database connection, and AI integration.
 
-# Step 4: Start the development server with auto-reloading and instant preview.
-npm run dev
-```
+1.  **Navigate to the backend directory:**
+    ```bash
+    cd backend
+    ```
 
-### Option 2: Edit a file directly in GitHub
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
 
-* Go to the file you want to edit.
-* Click the **Edit** button (pencil icon) on the top right.
-* Make your changes and commit them.
+3.  **Configure Environment Variables:**
+    *   Create a `.env` file based on the example:
+        ```bash
+        cp .env.example .env
+        ```
+    *   Open `.env` and populate it with your credentials:
+        ```env
+        PORT=5000
+        # Your PostgreSQL connection string (Neon or Local)
+        # Ensure 'sslmode=require' is present for Neon
+        DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
+        
+        # A secret key for signing JWTs (can be any random string)
+        JWT_SECRET=your_super_secret_key
+        
+        # Your Google Gemini API Key
+        GEMINI_API_KEY=AIzaSy...
+        ```
 
-### Option 3: Use GitHub Codespaces
+4.  **Initialize the Database:**
+    *   Run the initialization script to create the necessary tables (`users`, `courses`, `lessons`, etc.):
+        ```bash
+        npm run init-db
+        ```
 
-* Go to your repository’s main page.
-* Click the **Code** button (green).
-* Select the **Codespaces** tab.
-* Click **New codespace** to launch the environment.
-* Edit and commit your changes directly from there.
+5.  **Start the Server:**
+    ```bash
+    npm run dev
+    ```
+    The backend runs on `http://localhost:5000`.
 
-## Technologies Used
+### 2. Frontend Setup
 
-This project is built with:
+The frontend is the user interface built with Vite.
 
-* **Vite**
-* **TypeScript**
-* **React**
-* **shadcn-ui**
-* **Tailwind CSS**
+1.  **Navigate to the root directory (in a new terminal):**
+    ```bash
+    cd .. 
+    # Or just open the root directory if you aren't in backend/
+    ```
 
-## How to Deploy
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
 
-You can deploy this project using any hosting platform that supports static or Node-based deployments, such as:
+3.  **Start the Development Server:**
+    ```bash
+    npm run dev
+    ```
+    The app usually runs on `http://localhost:8080` (check terminal output).
 
-* Vercel
-* Netlify
-* GitHub Pages
+## 🏃‍♂️ Usage Guide
 
-## Custom Domain Setup
+1.  **Sign Up**: Create an account on the "Sign Up" page.
+2.  **Create a Course**: Click "Create Course", enter a topic (e.g., "Python Basics"), and wait for the AI to generate it.
+3.  **Learn**: Navigate through lessons, read notes, and watch video recommendations (if available).
+4.  **Quiz**: Take quizzes at the end of lessons to test your knowledge.
 
-If you’re deploying on a platform like Vercel or Netlify, you can easily connect a custom domain from your hosting dashboard.
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+This project is licensed under the MIT License.
