@@ -12,7 +12,8 @@ export const generateCourse = async (req: Request & { user?: any }, res: Respons
             throw new Error("GEMINI_API_KEY is not set");
         }
 
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        // Using gemini-1.5-flash which is faster and currently supported
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         const prompt = `
         Create a detailed online course about "${topic}".
