@@ -3,6 +3,7 @@ import pool from '../config/db';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import YouTube from 'youtube-sr';
 import { YoutubeTranscript } from 'youtube-transcript';
+import { COURSE_DEFAULTS } from '../config/defaults';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -56,7 +57,7 @@ async function processLesson(topic: string, lessonTitle: string, model: any) {
 
     1. Write a short content summary (2-3 sentences).
     2. Create detailed Notes (markdown bullet points).
-    3. Create a Quiz with 3 questions (JSON).
+    3. Create a Quiz with ${COURSE_DEFAULTS.QUIZ_QUESTION_COUNT} questions (JSON).
 
     Output JSON:
     {
@@ -122,8 +123,8 @@ export const generateCourse = async (req: Request & { user?: any }, res: Respons
             return;
         }
 
-        // Revert to 1.5-flash for better rate limits (1500 RPD vs 20 RPD for 2.5-flash)
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        // Use configured model
+        const model = genAI.getGenerativeModel({ model: COURSE_DEFAULTS.AI_MODEL });
 
         let totalTokens = 0;
 
@@ -134,12 +135,12 @@ export const generateCourse = async (req: Request & { user?: any }, res: Respons
         try {
             const prompt = `
             Analyze the topic: "${topic}".
-            Is this a "Small Topic" (can be explained in 1 video) or a "Big Topic" (needs a roadmap of 3-5 sub-modules)?
+            Is this a "Small Topic" (can be explained in ${COURSE_DEFAULTS.SMALL_TOPIC_LESSONS} video) or a "Big Topic" (needs a roadmap of ${COURSE_DEFAULTS.BIG_TOPIC_MIN_LESSONS}-${COURSE_DEFAULTS.BIG_TOPIC_MAX_LESSONS} sub-modules)?
             
             Return JSON:
             {
                 "type": "small" | "big",
-                "lessons": [ "Lesson Title 1" ] // If small, just 1 title. If big, 3-5 lesson titles.
+                "lessons": [ "Lesson Title 1" ] // If small, just ${COURSE_DEFAULTS.SMALL_TOPIC_LESSONS} title. If big, ${COURSE_DEFAULTS.BIG_TOPIC_MIN_LESSONS}-${COURSE_DEFAULTS.BIG_TOPIC_MAX_LESSONS} lesson titles.
             }
             `;
             const result = await model.generateContent({
@@ -162,7 +163,7 @@ export const generateCourse = async (req: Request & { user?: any }, res: Respons
         }
 
         const savedLessons = [];
-        const lessonsToProcess = structure.lessons.slice(0, 5);
+        const lessonsToProcess = structure.lessons.slice(0, COURSE_DEFAULTS.MAX_LESSONS_PER_COURSE);
         const totalLessons = lessonsToProcess.length;
 
         for (let i = 0; i < lessonsToProcess.length; i++) {
@@ -199,7 +200,19 @@ export const generateCourse = async (req: Request & { user?: any }, res: Respons
         sendEvent('progress', { percent: 100, message: "Finalizing course..." });
 
         // Send Usage Stats
-        sendEvent('usage', { totalTokens, model: "gemini-1.5-flash" });
+        sendEvent('usage', { totalTokens, model: COURSE_DEFAULTS.AI_MODEL });
+
+        // Persist usage to DB
+        if (req.user && req.user.id) {
+            try {
+                await pool.query(
+                    'INSERT INTO usage_logs (user_id, course_id, tokens, model) VALUES ($1, $2, $3, $4)',
+                    [req.user.id, courseId, totalTokens, COURSE_DEFAULTS.AI_MODEL]
+                );
+            } catch (dbErr) {
+                console.error("Failed to save usage log:", dbErr);
+            }
+        }
 
         sendEvent('complete', { success: true, lessons: savedLessons });
         res.end();
