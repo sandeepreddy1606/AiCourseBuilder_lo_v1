@@ -77,8 +77,8 @@ const Index = () => {
     if (courseId) {
       try {
         const data = await generateCourse(topic, courseId);
-        // @ts-ignore
-        await saveLessons(courseId, data.lessons);
+        // Backend already saved lessons, so just fetch them
+        await fetchLessons(courseId);
         setShowNewCourseForm(false);
       } catch (error) {
         console.error('Failed to generate course:', error);

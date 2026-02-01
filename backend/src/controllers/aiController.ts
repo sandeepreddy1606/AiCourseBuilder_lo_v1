@@ -21,7 +21,10 @@ async function determineStructure(topic: string, model: any) {
         "lessons": [ "Lesson Title 1" ] // If small, just 1 title. If big, 3-5 lesson titles.
     }
     `;
-    const result = await model.generateContent(prompt);
+    const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: "application/json" }
+    });
     const text = cleanJson(result.response.text());
     return JSON.parse(text);
 }
@@ -89,15 +92,29 @@ async function processLesson(topic: string, lessonTitle: string, model: any) {
     }
     `;
 
-    const result = await model.generateContent(contentPrompt);
-    const generatedContent = JSON.parse(cleanJson(result.response.text()));
+    const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: contentPrompt }] }],
+        generationConfig: { responseMimeType: "application/json" }
+    });
+
+    let generatedContent;
+    try {
+        generatedContent = JSON.parse(cleanJson(result.response.text()));
+    } catch (e) {
+        console.error("Failed to parse AI response used fallback:", e);
+        generatedContent = {
+            content: "Content generation failed. Please review the video.",
+            notes: "Notes unavailable.",
+            quiz_data: { questions: [] }
+        };
+    }
 
     return {
         title: lessonTitle,
-        content: generatedContent.content,
+        content: generatedContent.content || "No content generated",
         videos: [videoData],
-        notes: generatedContent.notes,
-        quiz_data: generatedContent.quiz_data
+        notes: generatedContent.notes || "No notes generated",
+        quiz_data: generatedContent.quiz_data || { questions: [] }
     };
 }
 

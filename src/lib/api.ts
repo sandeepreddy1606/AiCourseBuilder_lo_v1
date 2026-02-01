@@ -59,11 +59,14 @@ export const api = {
 
         if (!res.ok) {
             const errorText = await res.text();
+            console.error('Stream request failed. Status:', res.status, 'Raw body:', errorText);
             try {
                 const errJson = JSON.parse(errorText);
                 throw new Error(errJson.message || 'Stream Error');
-            } catch {
-                throw new Error(errorText || 'Stream Error');
+            } catch (e) {
+                // If parsing fails, throw the raw text directly
+                // (This catches "Unexpected token" errors)
+                throw new Error(errorText || `Stream Error: ${res.status}`);
             }
         }
 
@@ -96,7 +99,9 @@ export const api = {
                         const data = JSON.parse(dataMatch[1]);
                         onEvent(event, data);
                     } catch (e) {
-                        console.error('Error parsing stream data:', e);
+                        console.warn('Stream parse error. Raw data:', dataMatch[1]);
+                        // If it looks like a plain string error, wrap it
+                        onEvent(event, { message: dataMatch[1] });
                     }
                 }
             }
