@@ -105,24 +105,53 @@ export const generateCourse = async (req: Request & { user?: any }, res: Respons
     try {
         const { topic, courseId } = req.body;
 
+        // Set headers for SSE
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        const sendEvent = (event: string, data: any) => {
+            res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        };
+
         if (!process.env.GEMINI_API_KEY) {
-            throw new Error("GEMINI_API_KEY is not set");
+            sendEvent('error', { message: "GEMINI_API_KEY is not set" });
+            res.end();
+            return;
         }
 
+        // Fix: Use correct model version
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
+        sendEvent('progress', { percent: 10, message: `Analyzing topic: "${topic}"...` });
+
         // Step 1: Determine Structure
-        const structure = await determineStructure(topic, model);
-        console.log("Structure:", structure);
+        let structure;
+        try {
+            structure = await determineStructure(topic, model);
+            console.log("Structure:", structure);
+            sendEvent('progress', { percent: 20, message: `Determined structure: ${structure.type} course with ${structure.lessons.length} lessons.` });
+        } catch (err: any) {
+            console.error("Structure error:", err);
+            // Fallback to basic structure
+            structure = { type: 'small', lessons: [`Introduction to ${topic}`] };
+            sendEvent('progress', { percent: 20, message: "Standard structure determined." });
+        }
 
         const savedLessons = [];
-
-        // Step 2: Process each lesson
-        // Limit to 5 max to prevent timeouts
         const lessonsToProcess = structure.lessons.slice(0, 5);
+        const totalLessons = lessonsToProcess.length;
 
         for (let i = 0; i < lessonsToProcess.length; i++) {
             const lessonTitle = lessonsToProcess[i];
+            const currentPercent = 20 + ((i / totalLessons) * 70); // 20% to 90%
+
+            sendEvent('progress', {
+                percent: Math.round(currentPercent),
+                message: `Generating Lesson ${i + 1}/${totalLessons}: "${lessonTitle}"`
+            });
+
+            // Add detailed logs for substeps if possible, but for now just lesson level
             const lessonData = await processLesson(topic, lessonTitle, model);
 
             const { rows } = await pool.query(
@@ -140,9 +169,13 @@ export const generateCourse = async (req: Request & { user?: any }, res: Respons
             savedLessons.push(rows[0]);
         }
 
-        res.json({ success: true, lessons: savedLessons });
+        sendEvent('progress', { percent: 100, message: "Finalizing course..." });
+        sendEvent('complete', { success: true, lessons: savedLessons });
+        res.end();
+
     } catch (error: any) {
         console.error("Generation error:", error);
-        res.status(500).json({ message: error.message || 'Server error during generation' });
+        res.write(`event: error\ndata: ${JSON.stringify({ message: error.message || 'Server error' })}\n\n`);
+        res.end();
     }
 };

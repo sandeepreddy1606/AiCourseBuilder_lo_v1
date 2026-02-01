@@ -13,6 +13,8 @@ import { Lesson, Course } from '@/types/course';
 import { Button } from '@/components/ui/button';
 import { LogOut, ArrowLeft, BarChart3 } from 'lucide-react';
 
+import { GenerationOverlay } from '@/components/course/GenerationOverlay';
+
 const Index = () => {
   const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,7 +35,12 @@ const Index = () => {
     deleteCourse,
   } = useCourseData(user?.id);
 
-  const { generatingCourse, generateCourse } = useCourseLogic();
+  const {
+    generatingCourse,
+    generateCourse,
+    generationLogs,
+    generationProgress
+  } = useCourseLogic();
 
   const { lessonsMap } = useAllLessons(courses.map(c => c.id));
   const analytics = useAnalytics(courses, lessonsMap);
@@ -70,6 +77,7 @@ const Index = () => {
     if (courseId) {
       try {
         const data = await generateCourse(topic, courseId);
+        // @ts-ignore
         await saveLessons(courseId, data.lessons);
         setShowNewCourseForm(false);
       } catch (error) {
@@ -131,6 +139,11 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <GenerationOverlay
+        isVisible={generatingCourse}
+        logs={generationLogs}
+        progress={generationProgress}
+      />
       <header className="border-b border-border/50 backdrop-blur-sm sticky top-0 z-10 bg-background/50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">

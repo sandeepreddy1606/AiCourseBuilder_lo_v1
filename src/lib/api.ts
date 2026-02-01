@@ -49,4 +49,57 @@ export const api = {
         if (!res.ok) throw new Error(data.message || 'API Error');
         return data;
     },
+
+    postStream: async (endpoint: string, body: any, onEvent: (event: string, data: any) => void) => {
+        const res = await fetch(`${API_URL}${endpoint}`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+            const errorText = await res.text();
+            try {
+                const errJson = JSON.parse(errorText);
+                throw new Error(errJson.message || 'Stream Error');
+            } catch {
+                throw new Error(errorText || 'Stream Error');
+            }
+        }
+
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder();
+
+        if (!reader) throw new Error('No readable stream');
+
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const events = buffer.split('\n\n');
+
+            // Keep the last partial event in the buffer
+            buffer = events.pop() || '';
+
+            for (const eventBlock of events) {
+                if (!eventBlock.trim()) continue;
+
+                const eventMatch = eventBlock.match(/event: (.*)/);
+                const dataMatch = eventBlock.match(/data: (.*)/);
+
+                if (eventMatch && dataMatch) {
+                    const event = eventMatch[1];
+                    try {
+                        const data = JSON.parse(dataMatch[1]);
+                        onEvent(event, data);
+                    } catch (e) {
+                        console.error('Error parsing stream data:', e);
+                    }
+                }
+            }
+        }
+    }
 };
