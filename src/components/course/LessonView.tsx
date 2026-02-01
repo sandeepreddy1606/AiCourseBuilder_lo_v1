@@ -13,7 +13,7 @@ interface LessonViewProps {
 }
 
 export const LessonView = ({ lesson, onBack, onQuizComplete }: LessonViewProps) => {
-  const [selectedVideo, setSelectedVideo] = useState(lesson.videos[0]);
+  const [selectedVideo, setSelectedVideo] = useState(lesson.videos?.[0] || null);
 
   return (
     <div className="space-y-6 pb-8">
@@ -49,22 +49,28 @@ export const LessonView = ({ lesson, onBack, onQuizComplete }: LessonViewProps) 
         </TabsList>
 
         <TabsContent value="videos" className="space-y-4">
-          <Card className="aspect-video bg-card/50 backdrop-blur-sm overflow-hidden">
-            <iframe
-              src={selectedVideo.url.replace('watch?v=', 'embed/')}
-              className="w-full h-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
+          <Card className="aspect-video bg-card/50 backdrop-blur-sm overflow-hidden flex items-center justify-center">
+            {selectedVideo ? (
+              <iframe
+                src={selectedVideo.url.replace('watch?v=', 'embed/')}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            ) : (
+              <div className="text-muted-foreground p-4 text-center">
+                <Video className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>No video available for this lesson.</p>
+              </div>
+            )}
           </Card>
 
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-            {lesson.videos.map((video) => (
+            {lesson.videos?.map((video) => (
               <Card
                 key={video.id}
-                className={`p-3 cursor-pointer transition-all hover:shadow-lg ${
-                  selectedVideo.id === video.id ? 'ring-2 ring-primary shadow-lg shadow-primary/20' : ''
-                } bg-card/50 backdrop-blur-sm`}
+                className={`p-3 cursor-pointer transition-all hover:shadow-lg ${selectedVideo.id === video.id ? 'ring-2 ring-primary shadow-lg shadow-primary/20' : ''
+                  } bg-card/50 backdrop-blur-sm`}
                 onClick={() => setSelectedVideo(video)}
               >
                 <img

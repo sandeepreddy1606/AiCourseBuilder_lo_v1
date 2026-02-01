@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { User } from '@supabase/supabase-js';
 import { AuthForm } from '@/components/auth/AuthForm';
 import { TopicInputForm } from '@/components/course/TopicInputForm';
 import { LessonDashboard } from '@/components/course/LessonDashboard';
@@ -16,12 +14,12 @@ import { Button } from '@/components/ui/button';
 import { LogOut, ArrowLeft, BarChart3 } from 'lucide-react';
 
 const Index = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [showNewCourseForm, setShowNewCourseForm] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
-  
+
   const {
     courses,
     currentCourse,
@@ -41,16 +39,13 @@ const Index = () => {
   const analytics = useAnalytics(courses, lessonsMap);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
+    if (token && storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -60,11 +55,14 @@ const Index = () => {
   }, [currentCourse]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
     setCurrentCourse(null);
     setSelectedLesson(null);
     setShowNewCourseForm(false);
     setShowAnalytics(false);
+    window.location.reload();
   };
 
   const handleTopicSubmit = async (topic: string) => {

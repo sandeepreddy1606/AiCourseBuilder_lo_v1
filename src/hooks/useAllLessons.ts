@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/api';
 import { Lesson } from '@/types/course';
 
 export const useAllLessons = (courseIds: string[]) => {
@@ -15,21 +15,19 @@ export const useAllLessons = (courseIds: string[]) => {
       }
 
       try {
-        const { data, error } = await (supabase as any)
-          .from('lessons')
-          .select('*')
-          .in('course_id', courseIds)
-          .order('order_index');
-
-        if (error) throw error;
+        const promises = courseIds.map(id => api.get(`/courses/${id}/lessons`));
+        const results = await Promise.all(promises);
 
         const map = new Map<string, Lesson[]>();
-        data?.forEach((lesson: any) => {
-          const courseId = lesson.course_id;
-          if (!map.has(courseId)) {
-            map.set(courseId, []);
-          }
-          map.get(courseId)?.push(lesson as Lesson);
+
+        results.forEach((data, index) => {
+          const courseId = courseIds[index];
+          const courseLessons = (data || []).map((lesson: any) => ({
+            ...lesson,
+            videos: lesson.videos || [],
+            quiz_data: lesson.quiz_data || null,
+          }));
+          map.set(courseId, courseLessons);
         });
 
         setLessonsMap(map);
@@ -41,7 +39,7 @@ export const useAllLessons = (courseIds: string[]) => {
     };
 
     fetchAllLessons();
-  }, [courseIds]);
+  }, [JSON.stringify(courseIds)]);
 
   return { lessonsMap, loading };
 };

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
 export const useCourseLogic = () => {
@@ -9,16 +9,10 @@ export const useCourseLogic = () => {
   const generateCourse = async (topic: string, courseId: string) => {
     setGeneratingCourse(true);
     try {
-      // Call edge function to generate complete course
-      const { data, error } = await supabase.functions.invoke('generate-course', {
-        body: { topic, courseId }
+      const data = await api.post('/courses/generate', {
+        topic,
+        courseId
       });
-
-      if (error) throw error;
-
-      if (data.error) {
-        throw new Error(data.error);
-      }
 
       toast({
         title: "Course generated!",

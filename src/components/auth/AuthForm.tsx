@@ -4,13 +4,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Sparkles } from 'lucide-react';
 
 export const AuthForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -19,20 +20,21 @@ export const AuthForm = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const data = await api.post('/auth/register', {
         email,
         password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`
-        }
+        full_name: fullName
       });
 
-      if (error) throw error;
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify({ id: data.id, email: data.email }));
 
       toast({
         title: "Account created!",
-        description: "You can now sign in with your credentials.",
+        description: "You are now signed in.",
       });
+
+      window.location.reload();
     } catch (error: any) {
       toast({
         title: "Error signing up",
@@ -49,17 +51,20 @@ export const AuthForm = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const data = await api.post('/auth/login', {
         email,
         password,
       });
 
-      if (error) throw error;
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify({ id: data.id, email: data.email }));
 
       toast({
         title: "Welcome back!",
         description: "Successfully signed in.",
       });
+
+      window.location.reload();
     } catch (error: any) {
       toast({
         title: "Error signing in",
@@ -142,6 +147,18 @@ export const AuthForm = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your@email.com"
                   required
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="signup-name">Full Name (Optional)</Label>
+                <Input
+                  id="signup-name"
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="John Doe"
                   disabled={loading}
                 />
               </div>
