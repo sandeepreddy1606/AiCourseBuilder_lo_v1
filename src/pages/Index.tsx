@@ -23,6 +23,7 @@ import {
 
 import { GenerationOverlay } from '@/components/course/GenerationOverlay';
 import { TokenTracker } from '@/components/course/TokenTracker';
+import { PlanReview } from '@/components/course/PlanReview';
 
 const Index = () => {
   const [user, setUser] = useState<any | null>(null);
@@ -30,6 +31,8 @@ const Index = () => {
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [showNewCourseForm, setShowNewCourseForm] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [activeTopic, setActiveTopic] = useState<string>('');
+  const [activeCourseId, setActiveCourseId] = useState<string>('');
 
   const {
     courses,
@@ -45,8 +48,11 @@ const Index = () => {
   } = useCourseData(user?.id);
 
   const {
-    generatingCourse,
-    generateCourse,
+    status: generationStatus,
+    coursePlan,
+    planCourse,
+    executeCourse,
+    resetStatus,
     generationLogs,
     generationProgress,
     tokenUsage
@@ -91,21 +97,43 @@ const Index = () => {
     setSelectedLesson(null);
     setShowNewCourseForm(false);
     setShowAnalytics(false);
+    resetStatus();
     window.location.reload();
   };
 
   const handleTopicSubmit = async (topic: string) => {
     const courseId = await createCourse(topic);
     if (courseId) {
+      setActiveTopic(topic);
+      setActiveCourseId(courseId);
       try {
-        const data = await generateCourse(topic, courseId);
-        // Backend already saved lessons, so just fetch them
-        await fetchLessons(courseId);
-        setShowNewCourseForm(false);
+        await planCourse(topic, courseId);
+        // Do NOT close form yet, we go to review state
       } catch (error) {
-        console.error('Failed to generate course:', error);
+        console.error('Failed to plan course:', error);
       }
     }
+  };
+
+  const handleApprovePlan = async () => {
+    if (activeCourseId && coursePlan) {
+      try {
+        await executeCourse(activeCourseId, activeTopic);
+        // On complete:
+        await fetchLessons(activeCourseId);
+        setShowNewCourseForm(false);
+        resetStatus(); // Or keep 'complete' briefly? The hook handles timeout to complete
+        // Actually executeCourse resolves on complete.
+      } catch (error) {
+        console.error('Failed to execute course:', error);
+      }
+    }
+  };
+
+  const handleCancelPlan = () => {
+    resetStatus();
+    // Maybe delete the empty course? For MVP, just leave it or let user delete.
+    setShowNewCourseForm(false);
   };
 
   const handleLessonClick = (lesson: Lesson) => {
@@ -126,11 +154,13 @@ const Index = () => {
     setCurrentCourse(null);
     setSelectedLesson(null);
     setShowNewCourseForm(true);
+    resetStatus();
   };
 
   const handleCourseSelect = (course: Course) => {
     setCurrentCourse(course);
     setShowNewCourseForm(false);
+    resetStatus();
   };
 
   const handleBackToCourses = () => {
@@ -138,6 +168,7 @@ const Index = () => {
     setSelectedLesson(null);
     setShowNewCourseForm(false);
     setShowAnalytics(false);
+    resetStatus();
   };
 
   const handleShowAnalytics = () => {
@@ -162,7 +193,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <GenerationOverlay
-        isVisible={generatingCourse}
+        isVisible={generationStatus === 'executing'}
         logs={generationLogs}
         progress={generationProgress}
       />
@@ -226,6 +257,13 @@ const Index = () => {
             onBack={handleBack}
             onQuizComplete={handleQuizComplete}
           />
+        ) : generationStatus === 'reviewing' && coursePlan ? (
+          <PlanReview
+            plan={coursePlan}
+            onApprove={handleApprovePlan}
+            onCancel={handleCancelPlan}
+            isApproving={false}
+          />
         ) : currentCourse && lessons.length > 0 ? (
           <LessonDashboard
             course={currentCourse}
@@ -235,7 +273,7 @@ const Index = () => {
         ) : showNewCourseForm ? (
           <TopicInputForm
             onSubmit={handleTopicSubmit}
-            loading={generatingCourse || lessonsLoading}
+            loading={generationStatus === 'planning'}
           />
         ) : (
           <CoursesList

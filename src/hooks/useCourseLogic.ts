@@ -2,31 +2,54 @@ import { useState } from 'react';
 import { api } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
+export type CourseStatus = 'idle' | 'planning' | 'reviewing' | 'executing' | 'complete' | 'error';
+
 export const useCourseLogic = () => {
-  const [generatingCourse, setGeneratingCourse] = useState(false);
+  const [status, setStatus] = useState<CourseStatus>('idle');
+  const [coursePlan, setCoursePlan] = useState<any | null>(null);
   const [generationLogs, setGenerationLogs] = useState<string[]>([]);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [tokenUsage, setTokenUsage] = useState<{ totalTokens: number; model: string } | null>(null);
   const { toast } = useToast();
 
-  const generateCourse = async (topic: string, courseId: string) => {
-    setGeneratingCourse(true);
+  const planCourse = async (topic: string, courseId: string) => {
+    setStatus('planning');
+    setCoursePlan(null);
+
+    try {
+      const response = await api.post('/courses/plan', { topic, courseId });
+      setCoursePlan(response.plan);
+      setStatus('reviewing');
+      return response.plan;
+    } catch (error: any) {
+      setStatus('error');
+      toast({
+        title: "Planning Failed",
+        description: error.message || "Could not generate curriculum plan.",
+        variant: "destructive"
+      });
+      throw error;
+    }
+  };
+
+  const executeCourse = async (courseId: string, topic: string) => {
+    if (!coursePlan) return;
+
+    setStatus('executing');
     setGenerationLogs([]);
     setGenerationProgress(0);
     setTokenUsage(null);
 
     return new Promise((resolve, reject) => {
-      api.postStream('/courses/generate', { topic, courseId }, (event, data) => {
+      api.postStream(`/courses/${courseId}/execute`, { plan: coursePlan, topic, courseId }, (event, data) => {
         if (event === 'progress') {
           setGenerationProgress(data.percent);
-          setGenerationLogs(prev => [...prev, data.message]);
+          if (data.message) setGenerationLogs(prev => [...prev, data.message]);
         } else if (event === 'usage') {
-          console.log("🎟️ Token Usage Event Received:", data);
           setTokenUsage(data);
         } else if (event === 'complete') {
-          // Delay briefly to show 100%
           setTimeout(() => {
-            setGeneratingCourse(false);
+            setStatus('complete');
             toast({
               title: "Course generated!",
               description: "Your course is ready to explore.",
@@ -34,7 +57,7 @@ export const useCourseLogic = () => {
             resolve(data);
           }, 500);
         } else if (event === 'error') {
-          setGeneratingCourse(false);
+          setStatus('error');
           toast({
             title: "Error generating course",
             description: data.message || "Please try again later.",
@@ -43,21 +66,26 @@ export const useCourseLogic = () => {
           reject(new Error(data.message));
         }
       }).catch(err => {
-        setGeneratingCourse(false);
+        setStatus('error');
         console.error('Stream error:', err);
-        toast({
-          title: "Connection Error",
-          description: "Failed to connect to generation service.",
-          variant: "destructive",
-        });
         reject(err);
       });
     });
   };
 
+  const resetStatus = () => {
+    setStatus('idle');
+    setCoursePlan(null);
+    setGenerationLogs([]);
+    setGenerationProgress(0);
+  };
+
   return {
-    generatingCourse,
-    generateCourse,
+    status,
+    coursePlan,
+    planCourse,
+    executeCourse,
+    resetStatus,
     generationLogs,
     generationProgress,
     tokenUsage
