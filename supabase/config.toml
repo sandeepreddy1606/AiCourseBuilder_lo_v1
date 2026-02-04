@@ -1,4 +1,0 @@
-project_id = "ojfuanjizrmlixqoqoky"
-
-[functions.generate-course]
-verify_jwt = true
