@@ -1,12 +1,13 @@
 import express from 'express';
 import { getCourses, getCourseById, createCourse, deleteCourse } from '../controllers/courseController';
 import { getLessons, createLessons } from '../controllers/lessonController';
-import { generateCourse } from '../controllers/aiController';
+import { planCourse, executeCourse } from '../controllers/aiController';
 import { protect } from '../middleware/authMiddleware';
 
 const router = express.Router();
 
-router.post('/generate', protect, generateCourse);
+router.post('/plan', protect, planCourse);
+router.post('/:id/execute', protect, executeCourse);
 
 router.route('/')
     .get(protect, getCourses)

@@ -8,6 +8,7 @@ import path from 'path';
 import os from 'os';
 import ytdl from 'ytdl-core';
 import { GoogleAIFileManager } from "@google/generative-ai/server";
+import { DifficultyManager } from './DifficultyManager';
 
 // Helper for audio download (refactored from controller)
 const downloadAudio = async (url: string, videoId: string): Promise<string> => {
@@ -35,23 +36,27 @@ export class Orchestrator {
         this.sendEvent = sendEvent;
     }
 
-    async generateCourse(topic: string) {
-        this.sendEvent('progress', { percent: 5, message: "🤖 Orchestrator: Initializing Agents..." });
-
-        // Step 1: Planning
+    async planCourse(topic: string) {
         this.sendEvent('progress', { percent: 10, message: "📋 Planner Agent: Analyzing Instructional Design..." });
         const plan = await this.planner.planCurriculum(topic);
         this.sendEvent('progress', { percent: 20, message: `📋 Planner: Designed ${plan.type} course with ${plan.lessons.length} lessons.` });
+        return plan;
+    }
 
+    async executeCourse(courseId: string, plan: any, userId: string, topic: string) {
+        const difficultyManager = new DifficultyManager();
         const results = [];
         let completedLessons = 0;
         const totalLessons = plan.lessons.length;
 
         // Step 2: Execution Loop
         for (const lessonPlan of plan.lessons) {
+            // Adaptive Difficulty Check
+            const difficultyMode = await difficultyManager.determineDifficulty(userId, courseId);
+
             this.sendEvent('progress', {
                 percent: 20 + Math.floor((completedLessons / totalLessons) * 70),
-                message: `🎥 Searching content for: "${lessonPlan.title}"...`
+                message: `🎥 [${difficultyMode}] Searching content for: "${lessonPlan.title}"...`
             });
 
             // A. Search Video
@@ -86,13 +91,13 @@ export class Orchestrator {
 
             // C. Generate Content (Agentic Loop)
             if (!isAudioFallback) {
-                this.sendEvent('progress', { message: `🧠 Content Agent: Analyzing transcript for "${lessonPlan.title}"...` });
+                this.sendEvent('progress', { message: `🧠 Content Agent (${difficultyMode}): Analyzing transcript...` });
 
                 // 1. Extract Salient Phrases (GRPO Step 1)
                 const { phrases } = await this.contentAgent.extractSalientPhrases([transcriptText]);
 
-                // 2. Generate Draft
-                generatedContent = await this.contentAgent.generateLessonContent(transcriptText, phrases, lessonPlan.cognitive_level);
+                // 2. Generate Draft with Adaptive Difficulty
+                generatedContent = await this.contentAgent.generateLessonContent(transcriptText, phrases, lessonPlan.cognitive_level, difficultyMode);
 
                 // 3. Verification Loop
                 let attempts = 0;
@@ -108,8 +113,6 @@ export class Orchestrator {
                         console.log("✅ Verification Passed");
                     } else {
                         console.warn("❌ Verification Failed:", verification.feedback);
-                        // Re-prompt Content Agent with feedback (simplified here by just re-calling with strict prompt, ideally we pass feedback)
-                        // For MVP, we'll keep the first attempt but log the failure, or simply retry once.
                         attempts++;
                         if (attempts === 2) {
                             console.warn("Max retries reached, using best effort.");
@@ -146,7 +149,11 @@ export class Orchestrator {
                 quiz_data: generatedContent.quiz_data,
                 // Add metadata for adaptive learning
                 cognitive_level: lessonPlan.cognitive_level,
-                pedagogical_metadata: { objectives: lessonPlan.objectives }
+                pedagogical_metadata: {
+                    objectives: lessonPlan.objectives,
+                    difficulty_mode: difficultyMode,
+                    challenge_question: generatedContent.challenge_question
+                }
             });
 
             completedLessons++;

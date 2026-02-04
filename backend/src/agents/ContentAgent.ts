@@ -26,12 +26,20 @@ export class ContentAgent {
     }
 
     // Step 2: Generate Content from Phrases
-    async generateLessonContent(transcript: string, salientPhrases: string[], cognitiveLevel: string) {
-        console.log(`[ContentAgent] Generating content for level: ${cognitiveLevel}`);
+    async generateLessonContent(transcript: string, salientPhrases: string[], cognitiveLevel: string, difficultyMode: string = 'Standard') {
+        console.log(`[ContentAgent] Generating content for level: ${cognitiveLevel}, Mode: ${difficultyMode}`);
+
+        let difficultyInstruction = "";
+        if (difficultyMode === 'Remedial') {
+            difficultyInstruction = "**ADAPTATION: REMEDIAL MODE**. Simplify all technical jargon. Use concrete analogies for every abstract concept. Focus on foundations.";
+        } else if (difficultyMode === 'Advanced') {
+            difficultyInstruction = "**ADAPTATION: ADVANCED MODE**. Skip basic definitions. Focus on synthesis, critique, and real-world application. Assume prior knowledge.";
+        }
 
         const prompt = `
         You are an Expert Educator. 
         Target Cognitive Level: **${cognitiveLevel.toUpperCase()}** (Bloom's Taxonomy).
+        ${difficultyInstruction}
         
         **Source Material:**
         "${transcript.slice(0, 20000)}..."
@@ -43,10 +51,8 @@ export class ContentAgent {
         1. **Summary**: Write a detailed summary maximizing coverage of the salient phrases. Avoid redundancy.
         2. **Notes**: Structured markdown notes.
         3. **Quiz**: Create ${COURSE_DEFAULTS.QUIZ_QUESTION_COUNT} questions.
-           - **Experts-Informed Distractors**:
-             - Use "Opposite Facts" (invert true logic).
-             - Use "Incorrect Combinations" (mix true concepts incorrectly).
-             - DO NOT use simple synonyms or random words.
+           - **Experts-Informed Distractors**: Use "Opposite Facts" and "Incorrect Combinations".
+        4. **Deep Thinking Challenge**: Create ONE open-ended question that requires synthesis or application of concepts. It must NOT be a simple fact recall.
         
         Output JSON:
         {
@@ -54,6 +60,10 @@ export class ContentAgent {
             "notes": "Markdown notes...",
             "quiz_data": { 
                 "questions": [ { "question": "...", "options": ["A","B","C","D"], "correctAnswer": 0 } ] 
+            },
+            "challenge_question": {
+                "question": "...",
+                "key_concept": "The core concept the user should mention in their answer."
             }
         }
         `;
@@ -81,7 +91,7 @@ export class ContentAgent {
         - Domain-specific terminology (Fintech, Engineering, etc.).
         - Acronyms.
         
-        Generate the same JSON structure as standard text processing (content, notes, quiz_data).
+        Generate the same JSON structure as standard text processing (content, notes, quiz_data, challenge_question).
         `;
 
         const result = await model.generateContent([

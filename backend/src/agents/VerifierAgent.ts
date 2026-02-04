@@ -53,4 +53,44 @@ export class VerifierAgent {
             return { valid: true, feedback: "Verification failed, assuming valid fallback." };
         }
     }
+    async evaluateChallengeResponse(userAnswer: string, correctConcept: string) {
+        console.log(`[VerifierAgent] Evaluating challenge response...`);
+
+        const prompt = `
+        You are an **AI Tutor (LLM-as-a-Judge)**.
+        
+        **Task**: Evaluate the student's open-ended answer against the "Gold Standard" concept.
+        
+        **Student Answer**: "${userAnswer}"
+        **Gold Standard Concept**: "${correctConcept}"
+        
+        **Evaluation Rubric**:
+        1. **Semantic Match** (0.0 - 1.0): Does the answer cover the core meaning of the concept?
+        2. **Diagnostic Value**: If incorrect, what specific misconception does the student have?
+        3. **Positive Reinforcement**: Provide a helpful "Nudge" or reference to the correct logic.
+        
+        Output **JSON ONLY**:
+        {
+            "score": number, // 0.0 to 1.0
+            "feedback": "...",
+            "misconception": "..." | null,
+            "nudge": "..."
+        }
+        `;
+
+        try {
+            const result = await model.generateContent({
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: { responseMimeType: "application/json" }
+            });
+
+            const text = result.response.text();
+            const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+            return JSON.parse(cleanText);
+
+        } catch (error) {
+            console.error("[VerifierAgent] Evaluation Error:", error);
+            return { score: 0, feedback: "Error evaluating response.", misconception: null };
+        }
+    }
 }
