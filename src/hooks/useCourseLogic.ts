@@ -7,7 +7,7 @@ export type CourseStatus = 'idle' | 'planning' | 'reviewing' | 'executing' | 'co
 export const useCourseLogic = () => {
   const [status, setStatus] = useState<CourseStatus>('idle');
   const [coursePlan, setCoursePlan] = useState<any | null>(null);
-  const [generationLogs, setGenerationLogs] = useState<string[]>([]);
+  const [generationLogs, setGenerationLogs] = useState<{ message: string; timestamp: number }[]>([]);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [tokenUsage, setTokenUsage] = useState<{ totalTokens: number; model: string } | null>(null);
   const { toast } = useToast();
@@ -44,7 +44,9 @@ export const useCourseLogic = () => {
       api.postStream(`/courses/${courseId}/execute`, { plan: coursePlan, topic, courseId }, (event, data) => {
         if (event === 'progress') {
           setGenerationProgress(data.percent);
-          if (data.message) setGenerationLogs(prev => [...prev, data.message]);
+          if (data.message) {
+            setGenerationLogs(prev => [...prev, { message: data.message, timestamp: Date.now() }]);
+          }
         } else if (event === 'usage') {
           setTokenUsage(data);
         } else if (event === 'complete') {
@@ -73,21 +75,20 @@ export const useCourseLogic = () => {
     });
   };
 
-  const resetStatus = () => {
-    setStatus('idle');
-    setCoursePlan(null);
-    setGenerationLogs([]);
-    setGenerationProgress(0);
-  };
+  setStatus('idle');
+  setCoursePlan(null);
+  setGenerationLogs([]);
+  setGenerationProgress(0);
+};
 
-  return {
-    status,
-    coursePlan,
-    planCourse,
-    executeCourse,
-    resetStatus,
-    generationLogs,
-    generationProgress,
-    tokenUsage
-  };
+return {
+  status,
+  coursePlan,
+  planCourse,
+  executeCourse,
+  resetStatus,
+  generationLogs,
+  generationProgress,
+  tokenUsage
+};
 };
