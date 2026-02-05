@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager } from "@google/generative-ai/server";
 import { COURSE_DEFAULTS } from '../config/defaults';
+import { LLMFactory } from '../lib/llm/LLMFactory';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const fileManager = new GoogleAIFileManager(process.env.GEMINI_API_KEY || '');
@@ -18,11 +19,9 @@ export class ContentAgent {
         Output JSON: { "phrases": ["term1", "term2"] }
         `;
 
-        const result = await model.generateContent({
-            contents: [{ role: "user", parts: [{ text: combinedText }, { text: prompt }] }],
-            generationConfig: { responseMimeType: "application/json" }
-        });
-        return JSON.parse(result.response.text().replace(/```json/g, '').replace(/```/g, '').trim());
+        const llm = LLMFactory.getProvider();
+        const text = await llm.generate(combinedText + "\n\n" + prompt, { json: true });
+        return JSON.parse(text);
     }
 
     // Step 2: Generate Content from Phrases
@@ -69,11 +68,9 @@ export class ContentAgent {
         `;
 
         try {
-            const result = await model.generateContent({
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
-                generationConfig: { responseMimeType: "application/json" }
-            });
-            return JSON.parse(result.response.text().replace(/```json/g, '').replace(/```/g, '').trim());
+            const llm = LLMFactory.getProvider();
+            const text = await llm.generate(prompt, { json: true });
+            return JSON.parse(text);
         } catch (e) {
             console.error("Content Generation Error", e);
             throw e;

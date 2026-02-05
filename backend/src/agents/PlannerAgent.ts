@@ -1,8 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { COURSE_DEFAULTS } from '../config/defaults';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const model = genAI.getGenerativeModel({ model: COURSE_DEFAULTS.AI_MODEL });
+import { LLMFactory } from '../lib/llm/LLMFactory';
 
 export class PlannerAgent {
     async planCurriculum(topic: string, difficulty: string = 'Beginner') {
@@ -49,15 +45,12 @@ export class PlannerAgent {
         `;
 
         try {
-            const result = await model.generateContent({
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
-                generationConfig: { responseMimeType: "application/json" }
-            });
+            const llm = LLMFactory.getProvider();
+            const text = await llm.generate(prompt, { json: true });
 
-            const text = result.response.text();
-            // Sanitize
-            const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-            const plan = JSON.parse(cleanText);
+            // Provider already cleans text, but extra safety check for start/end if needed
+            // But JSON.parse handles whitespace.
+            const plan = JSON.parse(text);
 
             return plan;
         } catch (error) {

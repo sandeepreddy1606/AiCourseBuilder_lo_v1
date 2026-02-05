@@ -1,8 +1,5 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { COURSE_DEFAULTS } from '../config/defaults';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const model = genAI.getGenerativeModel({ model: COURSE_DEFAULTS.AI_MODEL });
+import { LLMFactory } from '../lib/llm/LLMFactory';
 
 export class VerifierAgent {
     async verifyContent(transcriptSnippet: string, generatedSummary: string, quizQuestions: any[]) {
@@ -37,15 +34,13 @@ export class VerifierAgent {
         }
         `;
 
-        try {
-            const result = await model.generateContent({
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
-                generationConfig: { responseMimeType: "application/json" }
-            });
 
-            const text = result.response.text();
-            const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-            return JSON.parse(cleanText);
+        try {
+            const llm = LLMFactory.getProvider();
+            const text = await llm.generate(prompt, { json: true });
+
+            // Provider returns cleaned text, but keeping JSON parse
+            return JSON.parse(text);
 
         } catch (error) {
             console.error("[VerifierAgent] Error:", error);
@@ -78,15 +73,11 @@ export class VerifierAgent {
         }
         `;
 
-        try {
-            const result = await model.generateContent({
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
-                generationConfig: { responseMimeType: "application/json" }
-            });
 
-            const text = result.response.text();
-            const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-            return JSON.parse(cleanText);
+        try {
+            const llm = LLMFactory.getProvider();
+            const text = await llm.generate(prompt, { json: true });
+            return JSON.parse(text);
 
         } catch (error) {
             console.error("[VerifierAgent] Evaluation Error:", error);
