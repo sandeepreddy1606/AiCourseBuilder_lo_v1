@@ -1,108 +1,71 @@
 # AI Course Builder
 
-A powerful, AI-driven application that generates personalized learning courses instantly. Built with React, Node.js, Express, and PostgreSQL, styled with Tailwind CSS.
-
-## 🚀 Features
-
-*   **AI Course Generation**: Generates comprehensive course structures with lessons, notes, and quizzes using Google Gemini AI.
-*   **Interactive Learning**: Track progress, mark lessons as complete, and take quizzes.
-*   **Modern UI**: Beautiful, responsive interface built with Tailwind CSS and Radix UI.
-*   **Secure Authentication**: Custom JWT-based authentication system.
-*   **PostgreSQL Database**: Robust data storage using Neon (or any PostgreSQL instance).
-
-## 🛠️ Tech Stack
-
-*   **Frontend**: React, TypeScript, Vite, Tailwind CSS, shadcn/ui
-*   **Backend**: Node.js, Express, TypeScript
-*   **Database**: PostgreSQL (Neon Cloud)
-*   **AI**: Google Gemini (Generative AI)
+A powerful, AI-driven application that generates personalized learning courses instantly. Built with React, Node.js, Express, and PostgreSQL.
 
 ## 📋 Prerequisites
 
-Before you begin, ensure you have the following installed:
 *   [Node.js](https://nodejs.org/) (v16 or higher)
 *   [PostgreSQL](https://www.postgresql.org/) (or a cloud provider like [Neon](https://neon.tech))
-*   A [Google Gemini API Key](https://aistudio.google.com/app/apikey)
+*   [Google Gemini API Key](https://aistudio.google.com/app/apikey)
 
-## ⚙️ Installation & Setup
+## 🚀 Quick Setup (Windows & macOS)
 
-### 1. Backend Setup
+### 1. Installation
 
-The backend handles the API, database connection, and AI integration.
+**Root (Frontend) Dependencies:**
+```bash
+npm install
+```
 
-1.  **Navigate to the backend directory:**
-    ```bash
-    cd backend
-    ```
+**Backend Dependencies:**
+```bash
+cd backend
+npm install
+cd ..
+```
 
-2.  **Install dependencies:**
-    ```bash
-    npm install
-    ```
+### 2. Environment Configuration
 
-3.  **Configure Environment Variables:**
-    *   Create a `.env` file based on the example:
-        ```bash
-        cp .env.example .env
-        ```
-    *   Open `.env` and populate it with your credentials:
-        ```env
-        PORT=5000
-        # Your PostgreSQL connection string (Neon or Local)
-        # Ensure 'sslmode=require' is present for Neon
-        DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
-        
-        # A secret key for signing JWTs (can be any random string)
-        JWT_SECRET=your_super_secret_key
-        
-        # Your Google Gemini API Key
-        GEMINI_API_KEY=AIzaSy...
-        ```
+1.  Copy the example environment file in the **root** directory:
+    *   **Windows:** `copy .env.example .env`
+    *   **Mac/Linux:** `cp .env.example .env`
+2.  Open `.env` and fill in your details:
+    *   `DATABASE_URL`: Your PostgreSQL connection string (keep `sslmode=require` for Neon).
+    *   `GEMINI_API_KEY`: Your Google AI Studio key.
+    *   `JWT_SECRET`: Any random string.
+    *   `VITE_SUPABASE_*`: Your Supabase keys (if applicable, or leave defaults for dev).
 
-4.  **Initialize the Database:**
-    *   Run the initialization script to create the necessary tables (`users`, `courses`, `lessons`, etc.):
-        ```bash
-        npm run init-db
-        ```
+### 3. Database Initialization
 
-5.  **Start the Server:**
-    ```bash
-    npm run dev
-    ```
-    The backend runs on `http://localhost:5000`.
+Initialize the database schema from the backend directory:
 
-### 2. Frontend Setup
+```bash
+cd backend
+npm run init-db
+cd ..
+```
 
-The frontend is the user interface built with Vite.
+## 🏃‍♂️ Running the Application
 
-1.  **Navigate to the root directory (in a new terminal):**
-    ```bash
-    cd .. 
-    # Or just open the root directory if you aren't in backend/
-    ```
+You need to run the backend and frontend in separate terminals.
 
-2.  **Install dependencies:**
-    ```bash
-    npm install
-    ```
+**Terminal 1: Backend**
+```bash
+cd backend
+npm run dev
+# Server starts on http://localhost:5000
+```
 
-3.  **Start the Development Server:**
-    ```bash
-    npm run dev
-    ```
-    The app usually runs on `http://localhost:8080` (check terminal output).
+**Terminal 2: Frontend (Root)**
+```bash
+npm run dev
+# App opens at http://localhost:8080 (or similar)
+```
 
-## 🏃‍♂️ Usage Guide
-
-1.  **Sign Up**: Create an account on the "Sign Up" page.
-2.  **Create a Course**: Click "Create Course", enter a topic (e.g., "Python Basics"), and wait for the AI to generate it.
-3.  **Learn**: Navigate through lessons, read notes, and watch video recommendations (if available).
-4.  **Quiz**: Take quizzes at the end of lessons to test your knowledge.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+## 🛠️ Tech Stack
+*   **Frontend**: React, TypeScript, Vite, Tailwind CSS
+*   **Backend**: Node.js, Express, TypeScript, PostgreSQL
+*   **AI**: Google Gemini
 
 ## 📄 License
-
-This project is licensed under the MIT License.
+ISC License
