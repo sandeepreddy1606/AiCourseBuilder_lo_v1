@@ -66,6 +66,7 @@ export class PlannerAgent {
             return {
                 type: 'small',
                 goal: `Learn basics of ${topic}`,
+                prerequisites: [],
                 lessons: [{
                     title: `Introduction to ${topic}`,
                     objectives: "Understand basics",

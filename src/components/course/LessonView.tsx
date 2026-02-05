@@ -50,9 +50,9 @@ export const LessonView = ({ lesson, onBack, onQuizComplete }: LessonViewProps) 
 
         <TabsContent value="videos" className="space-y-4">
           <Card className="aspect-video bg-card/50 backdrop-blur-sm overflow-hidden flex items-center justify-center">
-            {selectedVideo ? (
+            {selectedVideo && selectedVideo.url ? (
               <iframe
-                src={selectedVideo.url.replace('watch?v=', 'embed/')}
+                src={selectedVideo.url ? selectedVideo.url.replace('watch?v=', 'embed/') : ''}
                 className="w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen

@@ -54,7 +54,7 @@ export const PlanReview: React.FC<PlanReviewProps> = ({ plan, onApprove, onCance
                     <div className="space-y-4">
                         <h3 className="font-semibold text-sm uppercase text-muted-foreground tracking-wider">Prerequisites</h3>
                         <div className="flex flex-wrap gap-2">
-                            {plan.prerequisites.map((req, i) => (
+                            {plan.prerequisites?.map((req, i) => (
                                 <Badge key={i} variant="outline" className="text-xs">
                                     {req}
                                 </Badge>

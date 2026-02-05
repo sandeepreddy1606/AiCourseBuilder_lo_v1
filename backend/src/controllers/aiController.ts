@@ -9,7 +9,8 @@ export const planCourse = async (req: Request & { user?: any }, res: Response): 
         const { topic, courseId, difficulty } = req.body;
 
         if (!topic) {
-            return res.status(400).json({ message: 'Topic is required' });
+            res.status(400).json({ message: 'Topic is required' });
+            return;
         }
 
         if (!process.env.GEMINI_API_KEY) {
