@@ -33,7 +33,6 @@ cd ..
     *   `DATABASE_URL`: Your PostgreSQL connection string (keep `sslmode=require` for Neon).
     *   `GEMINI_API_KEY`: Your Google AI Studio key.
     *   `JWT_SECRET`: Any random string.
-    *   `VITE_SUPABASE_*`: Your Supabase keys (if applicable, or leave defaults for dev).
 
 ### 3. Database Initialization
 
