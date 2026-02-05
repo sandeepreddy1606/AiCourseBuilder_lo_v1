@@ -1,10 +1,11 @@
 import app from './app';
 import dotenv from 'dotenv';
+import path from 'path';
 import pool from './config/db';
 import { Server } from 'http';
 import { killPort } from './utils/killPort';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const PORT = parseInt(process.env.PORT || '5000', 10);
 
