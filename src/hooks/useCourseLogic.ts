@@ -75,20 +75,21 @@ export const useCourseLogic = () => {
     });
   };
 
-  setStatus('idle');
-  setCoursePlan(null);
-  setGenerationLogs([]);
-  setGenerationProgress(0);
-};
+  const resetStatus = () => {
+    setStatus('idle');
+    setCoursePlan(null);
+    setGenerationLogs([]);
+    setGenerationProgress(0);
+  };
 
-return {
-  status,
-  coursePlan,
-  planCourse,
-  executeCourse,
-  resetStatus,
-  generationLogs,
-  generationProgress,
-  tokenUsage
-};
+  return {
+    status,
+    coursePlan,
+    planCourse,
+    executeCourse,
+    resetStatus,
+    generationLogs,
+    generationProgress,
+    tokenUsage
+  };
 };
