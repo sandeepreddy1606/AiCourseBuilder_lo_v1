@@ -1,5 +1,8 @@
 export const COURSE_DEFAULTS = {
-    AI_MODEL: 'gemini-2.5-flash',
+    LLM: {
+        GEMINI_MODEL: 'gemini-2.5-flash',
+        GROQ_MODEL: 'llama-3.3-70b-versatile'
+    },
     QUIZ_QUESTION_COUNT: 3,
 
     // Structure Rules

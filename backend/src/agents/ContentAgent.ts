@@ -5,7 +5,7 @@ import { LLMFactory } from '../lib/llm/LLMFactory';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const fileManager = new GoogleAIFileManager(process.env.GEMINI_API_KEY || '');
-const model = genAI.getGenerativeModel({ model: COURSE_DEFAULTS.AI_MODEL });
+const model = genAI.getGenerativeModel({ model: COURSE_DEFAULTS.LLM.GEMINI_MODEL });
 
 export class ContentAgent {
 

@@ -7,7 +7,7 @@ export class GeminiProvider implements LLMProvider {
 
     constructor(apiKey: string) {
         const genAI = new GoogleGenerativeAI(apiKey);
-        this.model = genAI.getGenerativeModel({ model: COURSE_DEFAULTS.AI_MODEL });
+        this.model = genAI.getGenerativeModel({ model: COURSE_DEFAULTS.LLM.GEMINI_MODEL });
     }
 
     async generate(prompt: string, options?: LLMOptions): Promise<string> {

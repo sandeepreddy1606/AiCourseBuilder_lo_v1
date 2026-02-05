@@ -1,11 +1,13 @@
 import Groq from 'groq-sdk';
 import { LLMProvider, LLMOptions } from './types';
 
+import { COURSE_DEFAULTS } from '../../config/defaults';
+
 export class GroqProvider implements LLMProvider {
     private client: Groq;
     private modelName: string;
 
-    constructor(apiKey: string, modelName: string = 'llama-3.3-70b-versatile') {
+    constructor(apiKey: string, modelName: string = COURSE_DEFAULTS.LLM.GROQ_MODEL) {
         this.client = new Groq({ apiKey });
         this.modelName = modelName;
     }
