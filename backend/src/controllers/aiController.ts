@@ -2,10 +2,15 @@ import { Request, Response } from 'express';
 import pool from '../config/db';
 import { COURSE_DEFAULTS } from '../config/defaults';
 import { Orchestrator } from '../agents/Orchestrator';
+import { PlannerAgent } from '../agents/PlannerAgent';
 
 export const planCourse = async (req: Request & { user?: any }, res: Response): Promise<void> => {
     try {
-        const { topic, courseId } = req.body;
+        const { topic, courseId, difficulty } = req.body;
+
+        if (!topic) {
+            return res.status(400).json({ message: 'Topic is required' });
+        }
 
         if (!process.env.GEMINI_API_KEY) {
             res.status(500).json({ message: "GEMINI_API_KEY is not set" });
@@ -17,12 +22,13 @@ export const planCourse = async (req: Request & { user?: any }, res: Response): 
         // The prompt says "Return the JSON to the frontend", implying a standard HTTP response, not SSE.
         // But the previous implementation used SSE. Let's use standard JSON for the plan to allow easy editing.
 
+        console.log(`[Plan] Generating plan for: ${topic}`);
         const orchestrator = new Orchestrator((event, data) => {
             console.log(`[Planning] ${event}: ${JSON.stringify(data)}`);
         });
 
-        console.log(`[Plan] Generating plan for: ${topic}`);
-        const plan = await orchestrator.planCourse(topic);
+        const agent = new PlannerAgent();
+        const plan = await agent.planCurriculum(topic, difficulty);
 
         // Save Draft Lessons
         const savedLessons = [];

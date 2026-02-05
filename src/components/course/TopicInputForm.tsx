@@ -4,17 +4,18 @@ import { Input } from '@/components/ui/input';
 import { Loader2, Sparkles } from 'lucide-react';
 
 interface TopicInputFormProps {
-  onSubmit: (topic: string) => void;
+  onSubmit: (topic: string, difficulty: string) => void;
   loading: boolean;
 }
 
 export const TopicInputForm = ({ onSubmit, loading }: TopicInputFormProps) => {
   const [topic, setTopic] = useState('');
+  const [difficulty, setDifficulty] = useState('Beginner');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (topic.trim()) {
-      onSubmit(topic.trim());
+      onSubmit(topic.trim(), difficulty);
     }
   };
 
@@ -36,7 +37,7 @@ export const TopicInputForm = ({ onSubmit, loading }: TopicInputFormProps) => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="relative">
+          <div className="relative space-y-4">
             <Input
               type="text"
               value={topic}
@@ -45,8 +46,21 @@ export const TopicInputForm = ({ onSubmit, loading }: TopicInputFormProps) => {
               className="h-14 text-lg pr-4 bg-card/50 backdrop-blur-sm border-primary/20 focus:border-primary transition-all"
               disabled={loading}
             />
+
+            <div className="flex gap-4">
+              <select
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value)}
+                disabled={loading}
+                className="h-14 px-4 rounded-md border border-primary/20 bg-card/50 backdrop-blur-sm focus:border-primary transition-all min-w-[150px]"
+              >
+                <option value="Beginner">Beginner</option>
+                <option value="Intermediate">Intermediate</option>
+                <option value="Advanced">Advanced</option>
+              </select>
+            </div>
           </div>
-          
+
           <Button
             type="submit"
             size="lg"

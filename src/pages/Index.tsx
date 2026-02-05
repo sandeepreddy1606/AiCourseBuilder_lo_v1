@@ -101,13 +101,13 @@ const Index = () => {
     window.location.reload();
   };
 
-  const handleTopicSubmit = async (topic: string) => {
+  const handleTopicSubmit = async (topic: string, difficulty: string) => {
     const courseId = await createCourse(topic);
     if (courseId) {
       setActiveTopic(topic);
       setActiveCourseId(courseId);
       try {
-        await planCourse(topic, courseId);
+        await planCourse(topic, courseId, difficulty);
         // Do NOT close form yet, we go to review state
       } catch (error) {
         console.error('Failed to plan course:', error);

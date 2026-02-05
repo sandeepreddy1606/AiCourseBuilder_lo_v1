@@ -12,12 +12,12 @@ export const useCourseLogic = () => {
   const [tokenUsage, setTokenUsage] = useState<{ totalTokens: number; model: string } | null>(null);
   const { toast } = useToast();
 
-  const planCourse = async (topic: string, courseId: string) => {
+  const planCourse = async (topic: string, courseId: string, difficulty: string = 'Beginner') => {
     setStatus('planning');
     setCoursePlan(null);
 
     try {
-      const response = await api.post('/courses/plan', { topic, courseId });
+      const response = await api.post('/courses/plan', { topic, courseId, difficulty });
       setCoursePlan(response.plan);
       setStatus('reviewing');
       return response.plan;

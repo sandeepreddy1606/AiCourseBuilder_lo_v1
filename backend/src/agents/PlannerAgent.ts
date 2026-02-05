@@ -5,13 +5,19 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const model = genAI.getGenerativeModel({ model: COURSE_DEFAULTS.AI_MODEL });
 
 export class PlannerAgent {
-    async planCurriculum(topic: string) {
-        console.log(`[PlannerAgent] Planning curriculum for: ${topic}`);
+    async planCurriculum(topic: string, difficulty: string = 'Beginner') {
+        console.log(`[PlannerAgent] Planning curriculum for: ${topic} (Difficulty: ${difficulty})`);
 
         const prompt = `
         You are an Expert Instructional Designer following the **Dick and Carey Systems Approach Model**.
         
         Your task is to design a course curriculum for the topic: "${topic}".
+        Target Audience Difficulty Level: **${difficulty}**.
+        
+        **Instructions based on Difficulty:**
+        - **Beginner**: Focus on fundamental concepts, definitions, and basic understanding. Cognitive levels: Remember, Understand.
+        - **Intermediate**: Focus on application, analysis, and combining concepts. Cognitive levels: Apply, Analyze.
+        - **Advanced**: Focus on complex problem-solving, evaluation, and creation. Cognitive levels: Evaluate, Create.
         
         Step 1: **Instructional Analysis**
         - Identify the "Goal" of this course.
